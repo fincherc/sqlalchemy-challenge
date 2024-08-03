@@ -7,6 +7,20 @@ from sqlalchemy import create_engine, func
 
 
 #################################################
+# Function Setup
+#################################################
+
+def latest_date_db():
+    recent_date = Session.query(func.max(Measurement.date)).one()
+    most_recent_date = recent_date[0]
+
+    # Calculate the date one year from the last date in data set.
+    most_recent_date = dt.datetime.strptime(most_recent_date, '%Y-%m-%d')
+    one_year_ago_date = most_recent_date - dt.timedelta(days=365)
+
+    return one_year_ago_date
+
+#################################################
 # Database Setup
 #################################################
 
@@ -54,15 +68,9 @@ def welcome():
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-    """Fetch the Justice League character whose real_name matches
-       the path variable supplied by the user, or a 404 if not."""
-
-    recent_date = Session.query(func.max(Measurement.date)).one()
-    most_recent_date = recent_date[0]
-
-    # Calculate the date one year from the last date in data set.
-    most_recent_date = dt.datetime.strptime(most_recent_date, '%Y-%m-%d')
-    one_year_ago_date = most_recent_date - dt.timedelta(days=365)
+    """Convert the query results from your precipitation analysis (i.e. retrieve only the last 12 months of data) to a dictionary using date as the key and prcp as the value."""
+    
+    one_year_ago_date = latest_date_db()
 
     # Perform a query to retrieve the data and precipitation scores
     precipitation_date_data = Session.query(Measurement.date, Measurement.prcp).\
@@ -76,8 +84,7 @@ def precipitation():
 
 @app.route("/api/v1.0/stations")
 def stations():
-    """Fetch the Justice League character whose superhero matches
-       the path variable supplied by the user, or a 404 if not."""
+    """Return a JSON list of stations from the dataset."""
 
     stations = [result[0] for result in Session.query(Measurement.station).distinct()]
     
@@ -88,21 +95,17 @@ def stations():
 
 @app.route("/api/v1.0/tobs")
 def tobs():
-    """Fetch the Justice League character whose superhero matches
-       the path variable supplied by the user, or a 404 if not."""
+    """Query the dates and temperature observations of the most-active station for the previous year of data."""
     
+    #Retrieve active stations
     result_active_station = Session.query(Measurement.station, func.count(Measurement.station).label('count')).\
         group_by(Measurement.station).order_by(func.count(Measurement.station).desc()).all()
     
     most_active_station = result_active_station[0][0]
 
-    recent_date = Session.query(func.max(Measurement.date)).one()
-    most_recent_date = recent_date[0]
+    one_year_ago_date = latest_date_db()
 
-    # Calculate the date one year from the last date in data set.
-    most_recent_date = dt.datetime.strptime(most_recent_date, '%Y-%m-%d')
-    one_year_ago_date = most_recent_date - dt.timedelta(days=365)
-
+    #Get the tobs
     tobs_station = [result[0] for result in Session.query(Measurement.tobs).\
         filter(Measurement.date >= one_year_ago_date).\
         filter(Measurement.station == most_active_station)]
@@ -114,8 +117,7 @@ def tobs():
 
 @app.route("/api/v1.0/<start>")
 def start(start):
-    """Fetch the Justice League character whose superhero matches
-       the path variable supplied by the user, or a 404 if not."""
+    """Return a JSON list of the minimum temperature, the average temperature, and the maximum temperature for a specified start range."""
     
     result = Session.query(func.min(Measurement.tobs).label('TMIN'),
                            func.avg(Measurement.tobs).label('TAVG'),
@@ -133,8 +135,7 @@ def start(start):
 @app.route("/api/v1.0/<start>/<end>")
 def start_and_end(start, end):
 
-    """Fetch the Justice League character whose superhero matches
-       the path variable supplied by the user, or a 404 if not."""
+    """Return a JSON list of the minimum temperature, the average temperature, and the maximum temperature for a specified start-end range."""
 
     result = Session.query(func.min(Measurement.tobs).label('TMIN'),
                            func.avg(Measurement.tobs).label('TAVG'),
