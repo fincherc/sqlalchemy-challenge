@@ -1,6 +1,5 @@
 # Import the dependencies.
 from flask import Flask, jsonify
-import sqlalchemy, json
 import datetime as dt
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
@@ -115,20 +114,37 @@ def tobs():
 # For a specified start date and end date, calculate TMIN, TAVG, and TMAX for the dates from the start date to the end date, inclusive.
 
 @app.route("/api/v1.0/<start>")
-def start(superhero):
+def start(start):
     """Fetch the Justice League character whose superhero matches
        the path variable supplied by the user, or a 404 if not."""
     
-    return jsonify({"error": "Character not found."}), 404
+    result = Session.query(func.min(Measurement.tobs).label('TMIN'),
+                           func.avg(Measurement.tobs).label('TAVG'),
+                           func.max(Measurement.tobs).label('TMAX')) \
+                    .filter(Measurement.date >= start) \
+                    .all()
+    
+    tobs_start_data = [result[0][0], result[0][1], result[0][2]]
+    
+    return jsonify(tobs_start_data)
 
 
 @app.route("/api/v1.0/<start>/<end>")
-def start_and_end(superhero):
+def start_and_end(start, end):
 
     """Fetch the Justice League character whose superhero matches
        the path variable supplied by the user, or a 404 if not."""
 
-    return jsonify({"error": "Character not found."}), 404
+    result = Session.query(func.min(Measurement.tobs).label('TMIN'),
+                           func.avg(Measurement.tobs).label('TAVG'),
+                           func.max(Measurement.tobs).label('TMAX')) \
+                    .filter(Measurement.date >= start) \
+                    .filter(Measurement.date <= end) \
+                    .all()
+    
+    tobs_start_data = [result[0][0], result[0][1], result[0][2]]
+    
+    return jsonify(tobs_start_data)
 
 if __name__ == "__main__":
     app.run(debug=True)
