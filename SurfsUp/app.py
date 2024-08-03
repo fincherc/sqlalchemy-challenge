@@ -91,8 +91,24 @@ def stations():
 def tobs():
     """Fetch the Justice League character whose superhero matches
        the path variable supplied by the user, or a 404 if not."""
+    
+    result_active_station = Session.query(Measurement.station, func.count(Measurement.station).label('count')).\
+        group_by(Measurement.station).order_by(func.count(Measurement.station).desc()).all()
+    
+    most_active_station = result_active_station[0][0]
 
-    return jsonify({"error": "Character not found."}), 404
+    recent_date = Session.query(func.max(Measurement.date)).one()
+    most_recent_date = recent_date[0]
+
+    # Calculate the date one year from the last date in data set.
+    most_recent_date = dt.datetime.strptime(most_recent_date, '%Y-%m-%d')
+    one_year_ago_date = most_recent_date - dt.timedelta(days=365)
+
+    tobs_station = [result[0] for result in Session.query(Measurement.tobs).\
+        filter(Measurement.date >= one_year_ago_date).\
+        filter(Measurement.station == most_active_station)]
+
+    return jsonify(tobs_station)
 
 # Return a JSON list of the minimum temperature, the average temperature, and the maximum temperature for a specified start or start-end range.
 # For a specified start, calculate TMIN, TAVG, and TMAX for all the dates greater than or equal to the start date.
